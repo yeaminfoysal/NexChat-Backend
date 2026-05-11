@@ -1,11 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -76,6 +70,8 @@ model User {
 
   createdConversations Conversation[]
   notifications        Notification[]
+
+  refreshTokens RefreshToken[]
 }
 
 model FriendRequest {
@@ -134,9 +130,8 @@ model Conversation {
   members  ConversationMember[]
   messages Message[]
 
-  lastMessageId String? // conversation list fast load করার জন্য
-
-  lastMessageAt DateTime? // sort করার জন্য (সবচেয়ে recent আগে)
+  lastMessageId String?
+  lastMessageAt DateTime?
 }
 
 model ConversationMember {
@@ -222,6 +217,16 @@ model Notification {
   data      Json? // extra payload
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

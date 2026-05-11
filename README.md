@@ -1,98 +1,250 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Project Name
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NexChat
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+# Project Overview
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**Project Type:** Real-time Chat Application
 
-## Project setup
+In this application, the user:
 
-```bash
-$ npm install
+- can create/login account
+- can search and see other users
+- can send/accept/reject friend request
+- can do one-to-one chat
+- can create group and chat with multiple users
+- can see live online status, typing indicator, read receipts
+
+This application is a simplified version of modern messaging platforms, similar to:
+
+- WhatsApp
+- Telegram
+- Facebook Messenger
+
+---
+
+# Main Features
+
+## Authentication & Authorization
+
+- User registration
+- Login/logout
+- JWT authentication (access token: 15m, refresh token: 7d)
+- Refresh token stored in database (revoked on logout)
+- Password hashing with bcrypt
+- Protected routes via JwtAuthGuard
+
+---
+
+## User Management
+
+- User profile
+- Update profile
+- Upload avatar (Cloudinary)
+- Username search
+- Online/offline status
+- Last seen
+
+---
+
+## Friend System
+
+- Search users
+- Send friend request
+- Accept request
+- Reject request
+- Cancel request
+- Remove friend
+- Block user
+
+---
+
+## One-to-One Chat
+
+- Direct messaging
+- Conversation list (sorted by lastMessageAt)
+- Last message preview (denormalized: lastMessageId on Conversation)
+- Unread message count
+
+---
+
+## Group Chat
+
+- Create group
+- Group avatar
+- Group name
+- Add/remove members
+- Leave group
+- Group admin role
+
+---
+
+## Messaging Features
+
+- Send text message
+- Image / file / audio / video message (uploaded to Cloudinary first, then mediaUrl sent in message)
+- Reply message (replyToId field on Message)
+- Edit message
+- Delete message (soft delete: isDeleted flag, not removed from DB)
+- Delete for everyone (optional)
+
+---
+
+## Real-Time Features
+
+Using **Socket.IO**
+
+- Instant messaging
+- Typing indicator
+- Online/offline event
+- Seen/read receipts
+- Live notifications
+
+---
+
+## Message Interaction
+
+- Emoji reactions
+- Pin message (optional)
+- Message forwarding (optional)
+
+---
+
+## Notification System
+
+- Notifications are always persisted to the database
+- If target user is online, also emit via socket in real time
+- new message notification
+- Friend request notification
+- Group invite notification
+
+---
+
+# Tech Stack
+
+## Backend
+
+- **NestJS**
+- **Socket.IO**
+- **Prisma**
+- **PostgreSQL**
+- JWT auth
+- bcrypt
+- Cloudinary (file storage)
+- class-validator (input validation)
+
+---
+
+# Architecture
+
+## REST vs Socket responsibility
+
+**REST API handles:**
+- Auth (register, login, logout, refresh)
+- User management
+- Friend system (CRUD)
+- Conversation creation
+- Fetching messages, conversations, notifications
+
+**Socket.IO handles:**
+- Real-time messaging
+- Typing indicators
+- Online/offline presence
+- Read receipts
+- Friend request events
+- Group management events
+- Notification delivery
+
+## Socket rooms
+
+```
+user:{userId}               → personal events (notifications, friend requests)
+conversation:{conversationId} → messaging events (new message, typing, read)
 ```
 
-## Compile and run the project
+## Socket authentication
 
-```bash
-# development
-$ npm run start
+- WsJwtGuard verifies JWT on every socket connection
+- userId is always taken from the JWT token, never from client payload
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
+# Database Rules
+
+## Pagination
+
+- Message list uses **cursor-based pagination** (not offset)
+- Query param: `?cursor=messageId&limit=50`
+- Sorted by `createdAt DESC`
+- Conversation list uses offset-based pagination
+
+## Denormalization
+
+- `Conversation.lastMessageId` and `Conversation.lastMessageAt` are updated every time a new message is sent
+- Used for fast conversation list loading and sorting
+
+## Soft delete
+
+- Messages are never hard deleted from DB
+- `isDeleted: true` and `deletedAt` are set instead
+- `deletedFor` array stores userIds for "delete for me" feature
+
+## Block system
+
+- Before creating a direct conversation, check if either user has blocked the other
+- Before sending a message, check block status
+
+---
+
+# Response Format
+
+All REST responses return a consistent shape via GlobalTransformInterceptor:
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "ok"
+}
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+# Security
 
-# e2e tests
-$ npm run test:e2e
+- Rate limiting applied on auth routes
+- Message content sanitized against XSS before saving
+- Refresh tokens revoked on logout (deleted from DB)
+- All DTOs validated with class-validator
 
-# test coverage
-$ npm run test:cov
+---
+
+# File Upload Flow
+
+1. Client uploads file via `POST /uploads`
+2. Server validates MIME type and file size (image: max 5MB, video: max 50MB)
+3. File is uploaded to Cloudinary
+4. Server returns `mediaUrl`
+5. Client sends message with `mediaUrl`, `mimeType`, `mediaSize` fields
+
+---
+
+# Database Tables
+
+```
+users
+refresh_tokens
+friend_requests
+friendships
+blocked_users
+conversations
+conversation_members
+messages
+message_reads
+reactions
+notifications
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Total: 11 tables

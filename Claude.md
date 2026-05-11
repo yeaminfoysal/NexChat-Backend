@@ -1,11 +1,6 @@
-# Project Name (idea)
+# Project Name
 
-- ChatSphere
-- NexChat
-- RealTalk
-- SyncChat
-
-https://chatgpt.com/share/69f202d4-f998-83e8-a3f4-0ce2d86be468
+NexChat
 
 ---
 
@@ -13,16 +8,16 @@ https://chatgpt.com/share/69f202d4-f998-83e8-a3f4-0ce2d86be468
 
 **Project Type:** Real-time Chat Application
 
-এই application-এ user:
+In this application, the user:
 
-- account create/login করতে পারবে
-- অন্য user search করতে পারবে
-- friend request send/accept/reject করতে পারবে
-- one-to-one chat করতে পারবে
-- group create করে multiple user-এর সাথে chat করতে পারবে
-- live online status, typing indicator, read receipts দেখতে পারবে
+- can create/login account
+- can search and see other users
+- can send/accept/reject friend request
+- can do one-to-one chat
+- can create group and chat with multiple users
+- can see live online status, typing indicator, read receipts
 
-App-টা modern messaging platform-এর simplified version, similar to:
+This application is a simplified version of modern messaging platforms, similar to:
 
 - WhatsApp
 - Telegram
@@ -36,10 +31,10 @@ App-টা modern messaging platform-এর simplified version, similar to:
 
 - User registration
 - Login/logout
-- JWT authentication
-- Refresh token
-- Password hashing
-- Protected routes
+- JWT authentication (access token: 15m, refresh token: 7d)
+- Refresh token stored in database (revoked on logout)
+- Password hashing with bcrypt
+- Protected routes via JwtAuthGuard
 
 ---
 
@@ -47,7 +42,7 @@ App-টা modern messaging platform-এর simplified version, similar to:
 
 - User profile
 - Update profile
-- Upload avatar
+- Upload avatar (Cloudinary)
 - Username search
 - Online/offline status
 - Last seen
@@ -69,8 +64,8 @@ App-টা modern messaging platform-এর simplified version, similar to:
 ## One-to-One Chat
 
 - Direct messaging
-- Conversation list
-- Last message preview
+- Conversation list (sorted by lastMessageAt)
+- Last message preview (denormalized: lastMessageId on Conversation)
 - Unread message count
 
 ---
@@ -89,56 +84,41 @@ App-টা modern messaging platform-এর simplified version, similar to:
 ## Messaging Features
 
 - Send text message
-- Image message
-- File sharing
-- Audio/video message support
-- Reply message
+- Image / file / audio / video message (uploaded to Cloudinary first, then mediaUrl sent in message)
+- Reply message (replyToId field on Message)
 - Edit message
-- Delete message
+- Delete message (soft delete: isDeleted flag, not removed from DB)
 - Delete for everyone (optional)
 
 ---
 
 ## Real-Time Features
 
-using **Socket.IO**
+Using **Socket.IO**
 
-- instant messaging
-- typing indicator
-- online/offline event
-- seen/read receipts
-- live notifications
+- Instant messaging
+- Typing indicator
+- Online/offline event
+- Seen/read receipts
+- Live notifications
 
 ---
 
 ## Message Interaction
 
-- emoji reactions
-- pin message (optional)
-- message forwarding (optional)
+- Emoji reactions
+- Pin message (optional)
+- Message forwarding (optional)
 
 ---
 
 ## Notification System
 
+- Notifications are always persisted to the database
+- If target user is online, also emit via socket in real time
 - new message notification
-- friend request notification
-- group invite notification
-
----
-
-# Advanced Features (optional)
-
-এগুলো add করলে project আরও standout করবে।
-
-- message search
-- archive chat
-- dark mode
-- push notifications
-- voice call
-- video call via WebRTC
-- invite by link
-- QR invite
+- Friend request notification
+- Group invite notification
 
 ---
 
@@ -152,3 +132,119 @@ using **Socket.IO**
 - **PostgreSQL**
 - JWT auth
 - bcrypt
+- Cloudinary (file storage)
+- class-validator (input validation)
+
+---
+
+# Architecture
+
+## REST vs Socket responsibility
+
+**REST API handles:**
+- Auth (register, login, logout, refresh)
+- User management
+- Friend system (CRUD)
+- Conversation creation
+- Fetching messages, conversations, notifications
+
+**Socket.IO handles:**
+- Real-time messaging
+- Typing indicators
+- Online/offline presence
+- Read receipts
+- Friend request events
+- Group management events
+- Notification delivery
+
+## Socket rooms
+
+```
+user:{userId}               → personal events (notifications, friend requests)
+conversation:{conversationId} → messaging events (new message, typing, read)
+```
+
+## Socket authentication
+
+- WsJwtGuard verifies JWT on every socket connection
+- userId is always taken from the JWT token, never from client payload
+
+---
+
+# Database Rules
+
+## Pagination
+
+- Message list uses **cursor-based pagination** (not offset)
+- Query param: `?cursor=messageId&limit=50`
+- Sorted by `createdAt DESC`
+- Conversation list uses offset-based pagination
+
+## Denormalization
+
+- `Conversation.lastMessageId` and `Conversation.lastMessageAt` are updated every time a new message is sent
+- Used for fast conversation list loading and sorting
+
+## Soft delete
+
+- Messages are never hard deleted from DB
+- `isDeleted: true` and `deletedAt` are set instead
+- `deletedFor` array stores userIds for "delete for me" feature
+
+## Block system
+
+- Before creating a direct conversation, check if either user has blocked the other
+- Before sending a message, check block status
+
+---
+
+# Response Format
+
+All REST responses return a consistent shape via GlobalTransformInterceptor:
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "ok"
+}
+```
+
+---
+
+# Security
+
+- Rate limiting applied on auth routes
+- Message content sanitized against XSS before saving
+- Refresh tokens revoked on logout (deleted from DB)
+- All DTOs validated with class-validator
+
+---
+
+# File Upload Flow
+
+1. Client uploads file via `POST /uploads`
+2. Server validates MIME type and file size (image: max 5MB, video: max 50MB)
+3. File is uploaded to Cloudinary
+4. Server returns `mediaUrl`
+5. Client sends message with `mediaUrl`, `mimeType`, `mediaSize` fields
+
+---
+
+# Database Tables
+
+```
+users
+refresh_tokens
+friend_requests
+friendships
+blocked_users
+conversations
+conversation_members
+messages
+message_reads
+reactions
+notifications
+```
+
+Total: 11 tables

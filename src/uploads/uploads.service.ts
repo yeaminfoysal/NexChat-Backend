@@ -70,4 +70,17 @@ export class UploadsService {
         .end(file.buffer);
     });
   }
+
+  async uploadMultipleFiles(
+    files: Express.Multer.File[],
+    folder = 'nexchat',
+  ): Promise<{ mediaUrl: string; publicId: string; format: string; bytes: number }[]> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files provided');
+    }
+    
+    // Upload all files concurrently
+    const uploadPromises = files.map((file) => this.uploadFile(file, folder));
+    return Promise.all(uploadPromises);
+  }
 }

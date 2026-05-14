@@ -14,6 +14,8 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { PostsModule } from './posts/posts.module';
+import { CommentsModule } from './comments/comments.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -40,6 +42,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     NotificationsModule,
     MessagesModule,
     UploadsModule,
+    PostsModule,
+    CommentsModule,
   ],
   providers: [
     {

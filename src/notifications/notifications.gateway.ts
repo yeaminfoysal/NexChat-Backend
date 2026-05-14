@@ -20,4 +20,30 @@ export class NotificationsGateway {
       .to(`user:${userId}`)
       .emit('unread_count_updated', { conversationId, unreadCount });
   }
+
+  // --- Feed Events ---
+
+  emitPostLiked(userId: string, data: any) {
+    this.server.to(`user:${userId}`).emit('post_liked', data);
+  }
+
+  emitPostUnliked(userId: string, data: any) {
+    this.server.to(`user:${userId}`).emit('post_unliked', data);
+  }
+
+  emitPostCommented(userId: string, data: any) {
+    this.server.to(`user:${userId}`).emit('post_commented', data);
+  }
+
+  emitPostCommentDeleted(userId: string, data: any) {
+    this.server.to(`user:${userId}`).emit('post_comment_deleted', data);
+  }
+
+  emitPostCommentLiked(userId: string, data: any) {
+    this.server.to(`user:${userId}`).emit('post_comment_liked', data);
+  }
+
+  emitPostCommentUnliked(userId: string, data: any) {
+    this.server.to(`user:${userId}`).emit('post_comment_unliked', data);
+  }
 }
